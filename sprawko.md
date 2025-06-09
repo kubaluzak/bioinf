@@ -1,10 +1,10 @@
-# Rekonstrukcja sekwencji DNA na podstawie sond binarnych — opis problemu i algorytmu
+# Sekwencjonowanie DNA przez hybrydyzację w oparciu o chipy binarne (z uwzględnieniem błędów pozytywnych)
 
 ---
 
 ## Autorzy  
-**Jakub Urbaniak**  
-**Wiktor Wachowski**
+**Jakub Urbaniak 155870**  
+**Wiktor Wachowski 155859**
 
 ---
 
@@ -26,17 +26,28 @@
 
 ---
 
-## 0. Opis i formalizacja problemu
+## 0. Wprowadzenie i opis problemu
 
-Celem problemu jest rekonstrukcja pełnej sekwencji DNA na podstawie ograniczonych i zakodowanych danych sondowych. Dane sondy są generowane w dwóch różnych kodowaniach binarnych, zwanych spektrami: WS (Weak/Strong) oraz RY (Purine/Pyrimidine).
+W niniejszym sprawozdaniu pochylimy się nad problemem sekwencjonowania DNA, czyli odtwarzania pełnej sekwencji nukleotydów organizmu na podstawie danych eksperymentalnych. Jednym z podejść do tego zagadnienia jest sekwencjonowanie przez hybrydyzację, które polega na wykorzystywaniu krótkich fragmentów DNA, zwanych sondami, do odtwarzania oryginalnego ciągu.
+
+W naszym projekcie zajmujemy się wariantem tego problemu z wykorzystaniem chipów binarnych. W tej metodzie każda sonda nie wskazuje bezpośrednio konkretnego fragmentu DNA, lecz jest zakodowana w postaci binarnej, co wprowadza niejednoznaczność i utrudnia odtworzenie oryginalnej sekwencji.
+Dane dotyczące sond reprezentowane są przez spektra, które kategoryzują nukleotydy opierając się na ich różnych właściwościach.
+
+Dodatkową trudnością w tym wariancie są błędy pozytywne. Są to nadmiarowe sondy, które nie znajdowały się w pierwotnej sekwencji DNA. Ich obecność jest efektem niedoskonałości technologicznych lub zakłóceń w procesie hybrydyzacji. W praktyce oznacza to, że nie każda dopasowana sonda jest poprawnym fragmentem DNA.
+
+Ostatecznie, biorąc pod uwagę te aspekty, zadaniem algorytmu jest odtworzenie pełnej sekwencji DNA o zadanej długości, rozpoczynając od znanego fragmentu startowego. Proces budowania sekwencji odbywa się nukleotyd po nukleotydzie - na każdym kroku wyszukiwane są sondy, które pasują do aktualnie utworzonego fragmentu w obu spektrach, a następnie wybierane jest takie rozszerzenie, które zgodnie łączy oba kodowania i najlepiej spełnia warunki spójności. Dopiero złożenie dwóch sond z przeciwnych spektrów zawęża możliwe wartości do konkretnego nukleotydu, umożliwiając stopniowe odtwarzanie oryginalnego ciągu.
+
+---
+
+## 1. Formalizacja problemu
 
 ### Dane wejściowe
 
-- **Sekwencja startowa** \( S \) o długości \( m \) — znany fragment DNA, od którego rozpoczynamy rekonstrukcję,  
+- **Sekwencja startowa (S)** o długości *k* — znany fragment DNA, od którego rozpoczynamy rekonstrukcję całej sekwencji,  
 - **Sondy** w dwóch spektrach:  
-  - Spektrum WS: sondy składające się z liter \(\{W, S\}\) reprezentujące nukleotydy według reguł \(A, T \to W\) i \(C, G \to S\),  
-  - Spektrum RY: sondy składające się z liter \(\{R, Y\}\) reprezentujące nukleotydy według reguł \(A, G \to R\) i \(C, T \to Y\),  
-- Długość docelowej sekwencji \( n \), do której chcemy zrekonstruować pełną sekwencję.
+   - **Spektrum WS (Weak/Strong)** - dzieli nukleotydy według siły ich wiązań wodorowych: **A,T -> W** (wiązanie podwójne); **C,G -> S** (wiązanie potrójne)
+   - **Spektrum RY (Purine/Pyrimidine)** - dzieli nukleotydy według ich typu zasady azotowej: **A,G -> R** (puryny); **C,T -> Y** (pirymidyny)
+- Długość docelowej sekwencji *n*, do której chcemy zrekonstruować pełną sekwencję.
 
 ### Charakterystyka problemu
 
@@ -65,17 +76,6 @@ Znaleźć ciąg \( S' \in \Sigma^n \), który:
 - Minimalizuje błędy wynikające z niedokładności sond.
 
 ---
-
-## 1. Wprowadzenie i opis problemu
-
-Rekonstrukcja sekwencji DNA to zadanie odtworzenia pełnej sekwencji nukleotydów na podstawie fragmentarycznych informacji, takich jak krótkie fragmenty DNA, zwane sondami. W klasycznych metodach każda sonda reprezentuje jednoznacznie określony fragment sekwencji, co pozwala na prostą, liniową rekonstrukcję. Jednak w nowoczesnych technikach, w szczególności wykorzystujących kodowanie binarne dwóch spektrów, problem staje się bardziej złożony.
-
-W naszym podejściu korzystamy z dwuspektralnego kodowania sond, gdzie każdy nukleotyd jest jednocześnie reprezentowany w dwóch niezależnych kodowaniach: w spektrum WS (gdzie A i T kodowane są jako "W", C i G jako "S") oraz w spektrum RY (gdzie A i G są purynami kodowanymi jako "R", a C i T są pirymidynami kodowanymi jako "Y"). Takie podwójne kodowanie zwiększa ilość informacji i zmniejsza liczbę błędów, jednak sondy nie są już jednoznaczne — pojedyncza sonda może odpowiadać wielu możliwym fragmentom oryginalnej sekwencji.
-
-Zadaniem algorytmu jest odtworzenie pełnej sekwencji DNA o zadanej długości, rozpoczynając od znanego fragmentu startowego. Algorytm musi uwzględnić informacje z obu spektrów, tak aby dopasować sondy z pierwszego i drugiego spektrum jednocześnie, eliminując możliwe błędy i niezgodności.
-
----
-
 
 ## 2. Algorytm BFS — dokładny
 
@@ -173,3 +173,86 @@ pose = n/2
 | 1000              | 0.002375           | AATCAACTCAAAATTGATTGAACATGTAAATATAAGACCTGA... |
 
 ---
+
+# Heurystyczny algorytm sekwencjonowania DNA
+
+## Opis algorytmu
+
+Algorytm heurystyczny służy do **rekonstrukcji sekwencji DNA** z dwóch spektrów binarnych (WS i RY) generowanych metodą hybrydyzacji. Zamiast przeszukiwać wszystkie możliwe kombinacje, algorytm stosuje strategię zachłanną (greedy), która w każdej iteracji wybiera najbardziej obiecujący krok na podstawie zgodności z sondami.
+
+---
+
+## Założenia
+
+- Znana jest **początkowa sekwencja startowa** o długości co najmniej \(k-1\),
+- Znana jest **docelowa długość sekwencji** \(n\),
+- Znane są **binarne spektra** WS i RY, które mogą zawierać błędy pozytywne (fałszywe jedynki),
+- Algorytm wybiera nukleotydy pasujące do **obu spektrów jednocześnie**.
+
+---
+
+## Reprezentacja danych
+
+- **Spektrum binarne** — dla każdego możliwego k-meru (ciągu długości \(k\)) istnieje informacja o jego obecności (1) lub braku (0) w spektrum WS i RY.
+- **Prefix mapy** — dla każdego możliwego prefixu długości \(k-1\) przechowujemy listę możliwych dopisań na podstawie spektrum.
+
+---
+
+## Działanie algorytmu
+
+### Krok 1: Inicjalizacja
+
+1. Zakoduj początkowy **suffix** (ostatnie \(k-1\) znaków) startowej sekwencji w obu spektrach.
+2. Zbuduj **mapy prefixów** WS i RY, które dla każdego prefixu podają zbiór możliwych kolejnych nukleotydów.
+
+---
+
+### Krok 2: Iteracyjne rozszerzanie sekwencji
+
+Dla każdej pozycji od długości startowej do docelowej długości \(n\):
+
+1. Pobierz listę możliwych nukleotydów do dopisania dla aktualnego suffixu w **obu** spektrach.
+2. Wyznacz **część wspólną** obu zbiorów kandydatów — tylko nukleotydy akceptowalne przez oba spektra.
+3. Jeśli istnieje tylko **jeden kandydat**, dopisz go do sekwencji.
+4. Jeśli istnieje **więcej niż jeden kandydat**, zastosuj heurystykę wyboru:
+   - Preferuj nukleotydy zgodne z kolejnymi możliwymi sondami,
+   - Możesz zastosować prostą strategię np. **alfabetyczne pierwszeństwo** lub **liczbę możliwych rozszerzeń w kolejnych krokach**.
+5. Jeśli **nie ma żadnego możliwego dopisania**, zakończ rekonstrukcję z wynikiem negatywnym.
+6. Po dopisaniu nukleotydu zaktualizuj aktualny suffix i przejdź do kolejnego kroku.
+
+---
+
+### Krok 3: Wynik
+
+- **Sukces**: zrekonstruowano sekwencję o długości \(n\),
+- **Niepowodzenie**: nie znaleziono dopasowania w jednym z kroków.
+
+---
+
+## Pseudokod
+
+```plaintext
+HEURYSTYKA(start_sequence, spektrum_WS, spektrum_RY, k, n):
+    suffix_WS ← koduj(start_sequence, spektrum_WS)
+    suffix_RY ← koduj(start_sequence, spektrum_RY)
+    map_WS ← zbuduj_mapę_prefixów(spektrum_WS)
+    map_RY ← zbuduj_mapę_prefixów(spektrum_RY)
+
+    sequence ← start_sequence
+
+    while length(sequence) < n:
+        candidates_WS ← map_WS[suffix_WS]
+        candidates_RY ← map_RY[suffix_RY]
+        candidates ← część_wspólna(candidates_WS, candidates_RY)
+
+        if candidates is empty:
+            return "Brak rozwiązania"
+
+        next_nucleotide ← wybierz_kandydata(candidates)
+        sequence ← sequence + next_nucleotide
+
+        suffix_WS ← przesun(suffix_WS, next_nucleotide)
+        suffix_RY ← przesun(suffix_RY, next_nucleotide)
+
+    return sequence
+
