@@ -66,11 +66,34 @@ Celem problemu jest znalezienie sekwencji *R*, która:
 
 ---
 
-## 2. Algorytm BFS — dokładny
+## 2. Części wspólne algorytmów
+
+Zarówno algorytm dokładny, jak i heurystyczny bazują na wspólnych mechanizmach przetwarzania danych wejściowych oraz przygotowania struktur pomocniczych wykorzystywanych do dalszego działania algorytmów. Poniżej przedstawiono elementy wspólne dla obu implementacji:
+
+### 2.1. Wczytywanie danych wejściowych z plików XML
+
+W obu przypadkach algorytm rozpoczyna swoje działanie od wczytania danych z pliku XML. Każdy plik zawiera:
+- startową sekwencję
+- docelową długość sekwencji
+- dwa zbiory sond (dla każdego ze spektrów)
+
+### 2.2. Wczytywanie danych wejściowych z plików XML
+
+Oba algorytmy korzystają z metod kodowania sekwencji na dwa sposoby:
+WS (A i T → W; C i G → S)
+RY (A i G → R; C i T → Y)
+
+### 2.3. Budowanie map prefiksów sond
+
+W celu efektywnego wyszukiwania możliwych dalszych nukleotydów do budowania potencjalnej sekwencji, w obu algorytmach tworzona jest mapa prefiksów. Kluczami map są prefiksy długości *k-1* danej sondy (bez ostatniego znaku), a wartościami są zbiory liter (nukleotydów) możliwych do dopisania jako kolejnych.
+
+---
+
+## 3. Algorytm BFS — dokładny
 
 Do rozwiązania problemu wykorzystujemy algorytm **przeszukiwania wszerz (BFS)** po przestrzeni stanów reprezentującej możliwe rozszerzenia rekonstrukcji sekwencji.
 
-### 2.1. Reprezentacja stanu
+### 3.1. Reprezentacja stanu
 
 Każdy stan algorytmu reprezentowany jest przez:
 
@@ -80,14 +103,14 @@ Każdy stan algorytmu reprezentowany jest przez:
 
 W kodzie, zamiast przechowywać całe sekwencje, operujemy na suffixach i rozszerzamy je o kolejne nukleotydy zgodne z sondami.
 
-### 2.2. Inicjalizacja BFS
+### 3.2. Inicjalizacja BFS
 
 - Na początku kodujemy suffix startowej sekwencji w obu spektrach,  
 - Tworzymy dwie mapy prefixów (po jednym na każde spektrum), które dla prefixu długości \(k-1\) podają zbiór możliwych nukleotydów do dopisania,  
 - Inicjujemy kolejkę BFS z początkowym stanem: suffixy startowe i startowa sekwencja,  
 - Tworzymy zbiór `visited` by pamiętać, które pary suffixów już zostały przetworzone — to zapobiega powtórkom.
 
-### 2.3. Iteracyjny proces BFS
+### 3.3. Iteracyjny proces BFS
 
 W każdej iteracji:
 
@@ -100,7 +123,7 @@ W każdej iteracji:
    - Doklejamy nukleotyd do aktualnej sekwencji,  
    - Jeśli para suffixów nie była wcześniej odwiedzona, dodajemy nowy stan do kolejki i do zbioru `visited`.
 
-### 2.4. Zakończenie i wynik
+### 3.4. Zakończenie i wynik
 
 - Algorytm działa dopóki kolejka nie jest pusta lub nie znajdzie sekwencji o wymaganej długości,  
 - W przypadku braku rozwiązania informuje o tym użytkownika.
@@ -141,107 +164,105 @@ z założeniem, że eksplorowane są wszystkie możliwe pary prefixów. W prakty
 
 ---
 
-## 4. Zależność czasu działania algorytmu od długości sekwencji
-Parametry dla każdego przypadku: 
-
-k = 10
-
-sqpe = n/4
-
-pose = n/2
-
-| Długość sekwencji | Czas wykonania [s] | Przykładowa sekwencja (fragment)               |
-|-------------------|--------------------|-----------------------------------------------|
-| 20                | 0.000004           | ATGTTGTAAACCAAGATCTA                          |
-| 30                | 0.000026           | GGGCCTTGTCTTTGCCTACTGAAGATATAT                |
-| 50                | 0.000063           | GGGAGTACAGGCTTGAGCATATTAAAAAGACTGCTTTTTAATAT |
-| 100               | 0.000196           | CCATCTTGCTCTCTCGATGCTGCCAGGCGTAGAAGTTGAGC... |
-| 150               | 0.000279           | CCCGTCTCTACTAAAAATACAAAATCAGCCAAGCGTGGTGGC... |
-| 250               | 0.000481           | ATCTGGAGGGAAAACTGTGTGGAGAGAACACTTGACAAGAAA... |
-| 500               | 0.001098           | AAGTGGGAGAAAAAGCTGCTGCCCATCCAGCAATGGAGCTTC... |
-| 1000              | 0.002375           | AATCAACTCAAAATTGATTGAACATGTAAATATAAGACCTGA... |
-
----
-
-# Heurystyczny algorytm sekwencjonowania DNA
+## 4. Algorytm Beam Search - heurystyczny
 
 ## Opis algorytmu
 
-Algorytm heurystyczny służy do **rekonstrukcji sekwencji DNA** z dwóch spektrów binarnych (WS i RY) generowanych metodą hybrydyzacji. Zamiast przeszukiwać wszystkie możliwe kombinacje, algorytm stosuje strategię zachłanną (greedy), która w każdej iteracji wybiera najbardziej obiecujący krok na podstawie zgodności z sondami.
+Algorytm Beam Search jest heurystyczną modyfikacją algorytmu BFS, stosowaną w celu ograniczenia eksploracji przestrzeni rozwiązań. Kluczowym założeniem algorytmu jest to, że w każdej iteracji rozwijanych jest jedynie maksymalnie *X* potencjalnie najlepszych kandydatów. Kandydaci wybierani są na podstawie priorytetu, który jest wyliczany heurystycznie - uwzględnia długość obecnej sekwencji oraz częstotliwość występowania nukleotydów w dostępnych sondach. Dzięki temu liczba rozważanych ścieżek pozostaje kontrolowana, co pozwala na szybsze działanie kosztem potencjalnego pominięcia najlepszego rozwiązania.
+
+### 4.1. Reprezentacja stanu
+
+Analogicznie jak w algorytmie dokładnym (BFS), każdy stan algorytmu reprezentowany jest przez:
+
+- **Suffix sekwencji** z ostatnich *k-1* nukleotydów zakodowanych w spektrum WS,  
+- **Suffix sekwencji** z ostatnich *k-1* nukleotydów zakodowanych w spektrum RY,  
+- Aktualnie zrekonstruowaną sekwencję nukleotydów (ciąg liter alfabetu A, C, T, G).
+
+Stany przechowywane są natomiast w kopcu priorytetowym, gdzie priorytet określany jest heurystycznie na podstawie częstotliwości danego nukleotydu w zbiorze sond oraz długości sekwencji.
+
+### 4.2. Kroki działania algorytmu
+
+Algorytm składa się z następujących faz:
+
+1. Odczytujemy z pliku parametry wejściowe. Dla obu zbiorów sond budowane są mapy prefiksów, ułatwiające wyszukiwanie możliwych rozszerzeń sekwencji (podobnie jak w BFS).
+2. Inicjalizacja kolejki priorytetowej (kopca) - algorytm umieszcza w kolejce startowy stan, obejmujący zakodowane suffiksy WS i RY oraz startową sekwencję. Każdemu stanowi przypisywany jest priorytet wyliczany na podstawie długości sekwencji oraz częstości liter w sondach.
+3. W części iteracyjnej programu:
+   - W każdej iteracji rozwijamy maks *X* najlepszych (z najwyższym priorytetem) kandydatów z kolejki
+   - Dla każdego rozwijanego stanu algorytm generuje nowe kandydatury, dodając kolejne nukleotydy, pod warunkiem że są zgodne z sondami WS i RY (na podstawie map prefiksów)
+   - Każdy nowy stan dodawany jest do kolejki priorytetowej jeśli nie został jeszcze odwiedzony
+4. Jeśli podczas rozwijania stanów uda się uzyskać sekwencję o żądanej długości, algorytm zwraca wynik. W przeciwnym wypadku, gdy kolejka się wyczerpie, algorytm kończy działanie bez znalezienia rozwiązania.
+
+#### Kroki szczegółowe dla poszczególnego stanu
+1. Pobieramy listę możliwych nukleotydów do dopisania dla aktualnego suffiksu w obu spektrach
+2. Wyznaczamy część wspólną obu zbiorów kandydatów - tylko nukleotydy akceptowalne przez oba spektra
+3. Jeśli istnieje tylko jeden kandydat, dopisujemy go do sekwencji
+4. Jeśli istnieje więcej niż jeden kandydat, dla każdego z nich tworzony jest nowy stan z wyliczonym priorytetem na podstawie długości sekwencji oraz zgodności z sondami. Priorytet ten określa kolejność rozwijania stanów w kolejnych iteracjach.
+5. Jeśli natomiast nie ma żadnego możliwego dopisania, kończymy rozwijanie tego stanu (bez dodawania nowego do kolejki)
+6. Aktualizujemy suffix i idziemy do kolejnego kroku
+
+### 4.3. Analiza złożoności algorytmu Beam Search
+
+**Parametry:**
+- **`k`** — długość sondy (długość suffixu to `k−1`),  
+- **`n`** — docelowa długość rekonstruowanej sekwencji,  
+- **`S`** — liczba sond w każdym spektrum,  
+- **`X`** — szerokość wiązki (beam width), czyli maksymalna liczba kandydatów rozwijanych w każdej iteracji  
+
+**Analiza:**
+1. W każdej iteracji rozwijanych jest maksymalnie **`X`** najlepszych stanów (kandydatów)  
+2. Dla każdego stanu generujemy do **4 nowych kandydatów** (A, C, G, T), z których dopuszczamy tylko te zgodne z oboma spektrami  
+3. Liczba iteracji wynosi maksymalnie **`n − |start|`**, gdzie `|start|` to długość sekwencji startowej.  
+
+**Złożoność czasowa:**  
+`O(X ⋅ n)`  
+(co oznacza liniowy czas względem długości docelowej sekwencji i szerokości wiązki).  
+
+**Złożoność pamięciowa:**  
+`O(X ⋅ n)`  
+(z uwagi na przechowywanie do `X` sekwencji o długości `n` oraz ich suffixów).  
+
+> [NOTE]
+> W zapisie złożoności czasowej i pamięciowej używamy proszczonego symbolu *n*, mimo że w rzeczywistości liczba maks. iteracji algorytmów jest mniejsza = *n - |start|*. Wynika to z tego, że różnica jest zaniedbywalna, zwłaszcza dla większych danych testowych.
 
 ---
 
-## Założenia
+## 5 Analiza i porównanie wyników
 
-- Znana jest **początkowa sekwencja startowa** o długości co najmniej \(k-1\),
-- Znana jest **docelowa długość sekwencji** \(n\),
-- Znane są **binarne spektra** WS i RY, które mogą zawierać błędy pozytywne (fałszywe jedynki),
-- Algorytm wybiera nukleotydy pasujące do **obu spektrów jednocześnie**.
+## 5.1. Ograniczenia w danych testowych
 
----
+Należy wpierw zwrócić uwagę na pewne niedogodnienia związane z procesem testowania algorytmów:
 
-## Reprezentacja danych
+Głównym ograniczeniem przeprowadzonych testów był stosunkowo wąski zakres parametrów wejściowych, który nie pozwolił w pełni uwidocznić różnic w działaniu obu algorytmów. Ze względów technicznych eksperymenty ograniczono do sekwencji o długości nieprzekraczającej 1000 nukleotydów, choć teoretyczne możliwości implementacyjne pozwalały na obsługę sekwencji do 65,535 elementów. To zawężenie zakresu mogło wpłynąć na wyniki, szczególnie w kontekście badania skalowalności algorytmów dla naprawdę dużych instancji problemu.
 
-- **Spektrum binarne** — dla każdego możliwego k-meru (ciągu długości \(k\)) istnieje informacja o jego obecności (1) lub braku (0) w spektrum WS i RY.
-- **Prefix mapy** — dla każdego możliwego prefixu długości \(k-1\) przechowujemy listę możliwych dopisań na podstawie spektrum.
+Kolejnym istotnym ograniczeniem było utrzymanie stałej długości sondy (k=10) we wszystkich testach. Choć możnabyło skusić się na mniejszą wartość, tak dla większych *n* generator danych testowych zawodził, wobec tego zdecydowano o ustąpieniu w kwestii modyfikacji tego parametru. W rzeczywistych warunkach biologicznych długość ta może się znacząco różnić w zależności od zastosowanej technologii sekwencjonowania. Taka analiza mogłaby szczególnie uwidocznić różnice w zachowaniu algorytmu dokładnego i heurystycznego, gdyż im krótsze sondy, tym więcej kombinacji do rozważenia na każdym etapie rekonstrukcji.
 
----
+## 5.2. Dane testowe i wyniki
 
-## Działanie algorytmu
+W przeprowadzonych testach przyjęto następujące stałe parametry:
+- Długość k-merów (sond): **k = 10**
+- Stosunek błędów pozytywnych: **sqpe = n/4**
 
-### Krok 1: Inicjalizacja
+  Testy wykonane zostały wielokrotnie i uśrednione dla różnych długości sekwencji docelowych, mierząc czas wykonania obu algorytmów. Poniższa tabela przedstawia uzyskane wyniki:
 
-1. Zakoduj początkowy **suffix** (ostatnie \(k-1\) znaków) startowej sekwencji w obu spektrach.
-2. Zbuduj **mapy prefixów** WS i RY, które dla każdego prefixu podają zbiór możliwych kolejnych nukleotydów.
+| Długość sekwencji (n) | Algorytm dokładny - Czas [s] | Algorytm heurystyczny - Czas [s] | Przykładowa sekwencja (fragment)       |
+|----------------------|----------------------------|---------------------------------|----------------------------------------|
+| 20                   | 0.000004                   | 0.000012                        | ATGTTGTAAACCAAGATCTA                   |
+| 30                   | 0.000026                   | 0.000045                        | GGGCCTTGTCTTTGCCTACTGAAGATATAT         |
+| 50                   | 0.000063                   | 0.000091                        | GGGAGTACAGGCTTGAGCATATTAAAAAGACTG...   |
+| 100                  | 0.000196                   | 0.000208                        | CCATCTTGCTCTCTCGATGCTGCCAGGCGTAGA...   |
+| 150                  | 0.000279                   | 0.000253                        | CCCGTCTCTACTAAAAATACAAAATCAGCCAAG...   |
+| 250                  | 0.000481                   | 0.000327                        | ATCTGGAGGGAAAACTGTGTGGAGAGAACACT...   |
+| 500                  | 0.001098                   | 0.000782                        | AAGTGGGAGAAAAAGCTGCTGCCCATCCAGCA...   |
+| 1000                 | 0.002375                   | 0.001463                        | AATCAACTCAAAATTGATTGAACATGTAAATA...   |   
 
----
+Dla bardzo krótkich sekwencji algorytm dokładny wykazuje nieznaczną przewagę czasową.
+ 
 
-### Krok 2: Iteracyjne rozszerzanie sekwencji
+## 5.3. Wnioski
 
-Dla każdej pozycji od długości startowej do docelowej długości \(n\):
+W przeprowadzonych eksperymentach zaobserwowano, że w niektórych przypadkach algorytm dokładny (BFS) osiągał lepsze czasy wykonania niż algorytm heurystyczny (Beam Search), mimo teoretycznych założeń sugerujących odwrotną zależność. Zjawisko to można wyjaśnić poprzez analizę charakterystyki danych wejściowych. Im mniejszego kalibru były dane, tym korzystniej wypadał BFS. Beam Search, pomimo teoretycznej przewagi, traci czas na zarządzanie strukturą kopca i obliczanie heurystyk, co w małych przestrzeniach stanów staje się niepotrzebnym obciążeniem. Również, dla małych instancji problemu przestrzeń stanów w BFS jest na tyle ograniczona, że pełne przeszukiwanie nie generuje znaczącego narzutu obliczeniowego.
 
-1. Pobierz listę możliwych nukleotydów do dopisania dla aktualnego suffixu w **obu** spektrach.
-2. Wyznacz **część wspólną** obu zbiorów kandydatów — tylko nukleotydy akceptowalne przez oba spektra.
-3. Jeśli istnieje tylko **jeden kandydat**, dopisz go do sekwencji.
-4. Jeśli istnieje **więcej niż jeden kandydat**, zastosuj heurystykę wyboru:
-   - Preferuj nukleotydy zgodne z kolejnymi możliwymi sondami,
-   - Możesz zastosować prostą strategię np. **alfabetyczne pierwszeństwo** lub **liczbę możliwych rozszerzeń w kolejnych krokach**.
-5. Jeśli **nie ma żadnego możliwego dopisania**, zakończ rekonstrukcję z wynikiem negatywnym.
-6. Po dopisaniu nukleotydu zaktualizuj aktualny suffix i przejdź do kolejnego kroku.
-
----
-
-### Krok 3: Wynik
-
-- **Sukces**: zrekonstruowano sekwencję o długości \(n\),
-- **Niepowodzenie**: nie znaleziono dopasowania w jednym z kroków.
+Dla większych problemów warto zastosować Beam Search, ale konieczne może być dostrojenie heurystyki - tzn. znalezienie innego czynnika wpływającego na ocenę kandydata w celu dalszej analizy. Dla małych problemów, gdzie przestrzeń stanów jest ograniczona, BFS jest wystarczający i często szybszy dzięki prostocie implementacji oraz statystycznie mniejszej złożoność pamięci w tej instancji problemu.
 
 ---
-
-## Pseudokod
-
-```plaintext
-HEURYSTYKA(start_sequence, spektrum_WS, spektrum_RY, k, n):
-    suffix_WS ← koduj(start_sequence, spektrum_WS)
-    suffix_RY ← koduj(start_sequence, spektrum_RY)
-    map_WS ← zbuduj_mapę_prefixów(spektrum_WS)
-    map_RY ← zbuduj_mapę_prefixów(spektrum_RY)
-
-    sequence ← start_sequence
-
-    while length(sequence) < n:
-        candidates_WS ← map_WS[suffix_WS]
-        candidates_RY ← map_RY[suffix_RY]
-        candidates ← część_wspólna(candidates_WS, candidates_RY)
-
-        if candidates is empty:
-            return "Brak rozwiązania"
-
-        next_nucleotide ← wybierz_kandydata(candidates)
-        sequence ← sequence + next_nucleotide
-
-        suffix_WS ← przesun(suffix_WS, next_nucleotide)
-        suffix_RY ← przesun(suffix_RY, next_nucleotide)
-
-    return sequence
 
