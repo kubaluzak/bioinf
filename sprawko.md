@@ -10,7 +10,7 @@
 
 ## Spis treści
 
-0. [Opis i formalizacja problemu](#0-opis-i-formalizacja-problemu)  
+0. [Wprowadzenie i opis problemu](#0-opis-i-formalizacja-problemu)  
 1. [Wprowadzenie i opis problemu](#1-wprowadzenie-i-opis-problemu)  
 2. [Algorytm BFS — dokładny](#2-algorytm-bfs--dokładny)  
    2.1. [Reprezentacja stanu](#21-reprezentacja-stanu)  
@@ -42,38 +42,27 @@ Ostatecznie, biorąc pod uwagę te aspekty, zadaniem algorytmu jest odtworzenie 
 ## 1. Formalizacja problemu
 
 ### Dane wejściowe
-
-- **Sekwencja startowa (S)** o długości *k* — znany fragment DNA, od którego rozpoczynamy rekonstrukcję całej sekwencji,  
+- **Długość badanego fragmentu DNA (n)**, do którego chcemy zrekonstruować pełną sekwencję
+- **Długość sond oligonukleotydowych (k)**
+- **Sekwencja startowa (S<sub>0</sub>)** o długości *k* — znany fragment DNA, od którego rozpoczynamy rekonstrukcję całej sekwencji,  
 - **Sondy** w dwóch spektrach:  
    - **Spektrum WS (Weak/Strong)** - dzieli nukleotydy według siły ich wiązań wodorowych: **A,T -> W** (wiązanie podwójne); **C,G -> S** (wiązanie potrójne)
    - **Spektrum RY (Purine/Pyrimidine)** - dzieli nukleotydy według ich typu zasady azotowej: **A,G -> R** (puryny); **C,T -> Y** (pirymidyny)
-- Długość docelowej sekwencji *n*, do której chcemy zrekonstruować pełną sekwencję.
 
-### Charakterystyka problemu
-
-Każda sonda ma długość \( k \) i jest zdefiniowana jako prefix długości \( k-1 \) oraz nukleotyd \( N \) dopisywany na końcu. Jednak z powodu podwójnego kodowania jedna sonda w spektrum WS może odpowiadać wielu różnym k-merom DNA, podobnie jak sonda w spektrum RY. Dzięki analizie obu spektrów jednocześnie można ograniczyć liczbę możliwych rozszerzeń i zredukować niejednoznaczności.
-
-### Formalizacja
-
-Niech \( \Sigma = \{A, C, G, T\} \) będzie alfabetem nukleotydów. Definiujemy dwie funkcje kodujące:
-
-\[
-\text{encode}_{WS}: \Sigma \to \{W, S\} \quad\text{gdzie}\quad A, T \mapsto W; \quad C, G \mapsto S
-\]
-
-\[
-\text{encode}_{RY}: \Sigma \to \{R, Y\} \quad\text{gdzie}\quad A, G \mapsto R; \quad C, T \mapsto Y
-\]
-
-Dla aktualnego suffixu rekonstrukcji o długości \( k-1 \) w obu kodowaniach szukamy sond, których prefixy pasują do tych suffixów, a nukleotyd \( N \) dopisujemy tylko wtedy, gdy jest zgodny w obu spektrach.
+> [!NOTE]
+> *Ostateczna długość sond wynosi w praktyce **2k−1**, ponieważ każda pozycja w sekwencji - poza ostatnią - jest reprezentowana przez spektra WS i RY. Sonda z danego spektrum nosi ze sobą połowę informacji o nukleotydzie. Dopiero analiza wspólna WS i RY pozwala jednoznacznie określić konkretny nukleotyd, dlatego w praktyce pozycji w sondzie jest więcej.*
 
 ### Cel
 
-Znaleźć ciąg \( S' \in \Sigma^n \), który:
-
-- Rozszerza znany start \( S \),  
+Celem problemu jest znalezienie sekwencji *R*, która:
+- Odtwarza pełną sekwencję DNA o zadanej długości n
+- Jest superciągiem względem zbioru sond — tzn. fragmenty sond zachodzą na siebie na k-1 pozycjach (suffix poprzedniego wyrazu = prefix następnego wyrazu).
+  Formalnie:
+           dla każdej pary kolejnych sond *S<sub>y</sub>* i *S<sub>x</sub>*, gdzie *S<sub>y</sub>* występuje przed *S<sub>x</sub>*, zachodzi:
+                                                         *n<sub>y+i</sub>* = *n<sub>x+i-1</sub>*
+- Rozszerza znany fragment startowy *S<sub>0</sub>*,  
 - Jest spójny z dostępnymi sondami w obu spektrach (dla każdego dopisanego nukleotydu istnieją sondy w spektrum WS i RY o odpowiednich prefixach i dopisanych nukleotydach),  
-- Minimalizuje błędy wynikające z niedokładności sond.
+- Minimalizuje błędy pozytywne wynikające z obecnośći nadmiarowych sond,
 
 ---
 
